@@ -2,8 +2,8 @@ import Phaser from "phaser";
 import { useState } from "react";
 
 const sizes = {
-  width: 500,
-  height: 500,
+  width: 1000,
+  height: 1000,
 };
 
 const name = localStorage.getItem("name");
@@ -19,6 +19,7 @@ class GameScene extends Phaser.Scene {
 
   preload() {
     this.load.image("player");
+    this.load.image("map", "assets/map.png");
   }
 
   create() {
@@ -33,6 +34,8 @@ class GameScene extends Phaser.Scene {
         y: self.player.y,
       }));
     };
+
+    this.add.sprite(500, 500, "map");
 
     this.socket.onclose = function(e) {
       console.log("Websocket disconnected");
@@ -51,7 +54,6 @@ class GameScene extends Phaser.Scene {
             playerName != name &&
             self.addPlayer(playerName, playerData.x, playerData.y)
           ));
-
           break;
         case "player_connected":
           self.addPlayer(message.name, message.x, message.y);
@@ -66,8 +68,8 @@ class GameScene extends Phaser.Scene {
     };
 
     this.player = this.physics.add.image(
-      sizes.width - 250,
-      sizes.height - 250,
+      500,
+      500,
       "player",
     );
     this.player.setImmovable(true);
@@ -78,6 +80,10 @@ class GameScene extends Phaser.Scene {
       name,
     );
 
+    const camera = this.cameras.main;
+    camera.startFollow(this.player);
+    camera.setDeadzone(100, 100);
+
     this.cursor = this.input.keyboard.createCursorKeys("W,A,S,D");
     this.keys = this.input.keyboard.addKeys("W,A,S,D");
   }
@@ -86,6 +92,9 @@ class GameScene extends Phaser.Scene {
     const { cursor, player, keys } = this;
 
     this.nickname.setPosition(player.x - 13, player.y - 35);
+
+    const playersList = Object.values(this.players).map((p) => p.sprite);
+    this.physics.world.collide(player, playersList);
 
     if (cursor.left.isDown || keys.A.isDown) {
       player.setVelocityX(-160);
@@ -130,6 +139,13 @@ class GameScene extends Phaser.Scene {
       const playerNameText = this.add.text(x, y - 25, playerName, {}).setOrigin(
         0.5,
       );
+
+      this.physics.add.existing(player);
+      player.body.setCollideWorldBounds(true);
+      player.body.setImmovable(true);
+      player.body.setBounce(0.2);
+      player.body.setMass(10);
+
       this.players[playerName] = {
         sprite: player,
         nameText: playerNameText,
