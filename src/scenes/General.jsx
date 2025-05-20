@@ -7,35 +7,6 @@ const sizes = {
 };
 
 const name = localStorage.getItem("name");
-const socket = new WebSocket("ws://localhost:8000/ws");
-
-socket.onopen = function(e) {
-  console.log("Websocket connected");
-};
-
-socket.onclose = function(e) {
-  console.log("Websocket disconnected");
-};
-
-socket.onerror = function(e) {
-  console.log(e);
-};
-
-socket.onmessage = function(event) {
-  const message = JSON.parse(event.data);
-
-  switch (message.type) {
-    case "initial_data":
-      console.log("init");
-      break;
-    case "player_connected":
-      console.log("player connected");
-      break;
-    case "player_disconnected":
-      console.log("player disconnected");
-      break;
-  }
-};
 
 class GameScene extends Phaser.Scene {
   constructor() {
@@ -43,6 +14,7 @@ class GameScene extends Phaser.Scene {
     this.player;
     this.cursor;
     this.playerSpeed = 160;
+    this.players = {};
   }
 
   preload() {
@@ -50,6 +22,42 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
+    const self = this;
+    this.socket = new WebSocket("ws://localhost:8000/ws");
+
+    this.socket.onopen = function(e) {
+      console.log("Websocket connected");
+      self.socket.send(JSON.stringify({
+        name: name,
+        x: self.player.x,
+        y: self.player.y,
+      }));
+    };
+
+    this.socket.onclose = function(e) {
+      console.log("Websocket disconnected");
+    };
+
+    this.socket.onerror = function(e) {
+      console.log(e);
+    };
+
+    this.socket.onmessage = function(event) {
+      const message = JSON.parse(event.data);
+
+      switch (message.type) {
+        case "initial_data":
+          console.log("init");
+          break;
+        case "player_connected":
+          self.addPlayer(message.name, message.x, message.y);
+          break;
+        case "player_disconnected":
+          console.log("player disconnected");
+          break;
+      }
+    };
+
     this.player = this.physics.add.image(
       sizes.width - 250,
       sizes.height - 250,
@@ -65,12 +73,6 @@ class GameScene extends Phaser.Scene {
 
     this.cursor = this.input.keyboard.createCursorKeys("W,A,S,D");
     this.keys = this.input.keyboard.addKeys("W,A,S,D");
-
-    socket.send(JSON.stringify({
-      name: name,
-      x: this.player.x,
-      y: this.player.y,
-    }));
   }
 
   update() {
@@ -80,14 +82,14 @@ class GameScene extends Phaser.Scene {
 
     if (cursor.left.isDown || keys.A.isDown) {
       player.setVelocityX(-160);
-      socket.send(JSON.stringify({
+      this.socket.send(JSON.stringify({
         type: "move",
         x: player.x,
         y: player.y,
       }));
     } else if (cursor.right.isDown || keys.D.isDown) {
       player.setVelocityX(160);
-      socket.send(JSON.stringify({
+      this.socket.send(JSON.stringify({
         type: "move",
         x: player.x,
         y: player.y,
@@ -98,20 +100,28 @@ class GameScene extends Phaser.Scene {
 
     if (cursor.up.isDown || keys.W.isDown) {
       player.setVelocityY(-160);
-      socket.send(JSON.stringify({
+      this.socket.send(JSON.stringify({
         type: "move",
         x: player.x,
         y: player.y,
       }));
     } else if (cursor.down.isDown || keys.S.isDown) {
       player.setVelocityY(160);
-      socket.send(JSON.stringify({
+      this.socket.send(JSON.stringify({
         type: "move",
         x: player.x,
         y: player.y,
       }));
     } else {
       player.setVelocityY(0);
+    }
+  }
+
+  addPlayer(playerName, x, y) {
+    if (!this.players[playerName]) {
+      const player = this.add.sprite(x, y, "player");
+      this.players[playerName] = player;
+      console.log(`Player ${playerName} connected`);
     }
   }
 }
