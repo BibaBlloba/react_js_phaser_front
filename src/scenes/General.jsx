@@ -52,6 +52,9 @@ class GameScene extends Phaser.Scene {
         case "player_connected":
           self.addPlayer(message.name, message.x, message.y);
           break;
+        case "player_update":
+          self.movePlayer(message.name, message.x, message.y);
+          break;
         case "player_disconnected":
           console.log("player disconnected");
           break;
@@ -122,6 +125,19 @@ class GameScene extends Phaser.Scene {
       const player = this.add.sprite(x, y, "player");
       this.players[playerName] = player;
       console.log(`Player ${playerName} connected`);
+    }
+  }
+
+  movePlayer(playerName, x, y) {
+    const player = this.players[playerName];
+    if (player) {
+      this.tweens.add({
+        targets: player,
+        x: x,
+        y: y,
+        duration: 100,
+        ease: "Power1",
+      });
     }
   }
 }
