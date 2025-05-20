@@ -47,7 +47,11 @@ class GameScene extends Phaser.Scene {
 
       switch (message.type) {
         case "initial_data":
-          console.log("init");
+          Object.entries(message.players).map(([playerName, playerData]) => (
+            playerName != name &&
+            self.addPlayer(playerName, playerData.x, playerData.y)
+          ));
+
           break;
         case "player_connected":
           self.addPlayer(message.name, message.x, message.y);
@@ -56,7 +60,7 @@ class GameScene extends Phaser.Scene {
           self.movePlayer(message.name, message.x, message.y);
           break;
         case "player_disconnected":
-          console.log("player disconnected");
+          self.removePlayer(message.name);
           break;
       }
     };
@@ -123,21 +127,43 @@ class GameScene extends Phaser.Scene {
   addPlayer(playerName, x, y) {
     if (!this.players[playerName]) {
       const player = this.add.sprite(x, y, "player");
-      this.players[playerName] = player;
-      console.log(`Player ${playerName} connected`);
+      const playerNameText = this.add.text(x, y - 25, playerName, {}).setOrigin(
+        0.5,
+      );
+      this.players[playerName] = {
+        sprite: player,
+        nameText: playerNameText,
+      };
     }
   }
 
   movePlayer(playerName, x, y) {
-    const player = this.players[playerName];
-    if (player) {
+    const playerData = this.players[playerName];
+    if (playerData) {
       this.tweens.add({
-        targets: player,
+        targets: playerData.sprite,
         x: x,
         y: y,
-        duration: 100,
+        duration: 0,
         ease: "Power1",
       });
+
+      this.tweens.add({
+        targets: playerData.nameText,
+        x: x,
+        y: y - 25,
+        duration: 0,
+        ease: "Power1",
+      });
+    }
+  }
+
+  removePlayer(playerName) {
+    const playerData = this.players[playerName];
+    if (playerData) {
+      playerData.sprite.destroy();
+      playerData.nameText.destroy();
+      delete this.players[playerName];
     }
   }
 }
