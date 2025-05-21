@@ -20,6 +20,7 @@ class GameScene extends Phaser.Scene {
   preload() {
     this.load.image("player");
     this.load.image("map", "assets/map.png");
+    this.load.image("bullet", "assets/bullet.png");
   }
 
   create() {
@@ -34,6 +35,8 @@ class GameScene extends Phaser.Scene {
         y: self.player.y,
       }));
     };
+
+    this.bullets = this.physics.add.group();
 
     this.add.sprite(500, 500, "map");
 
@@ -61,6 +64,9 @@ class GameScene extends Phaser.Scene {
         case "player_update":
           self.movePlayer(message.name, message.x, message.y);
           break;
+        case "fire":
+          self.fire(message);
+          break;
         case "player_disconnected":
           self.removePlayer(message.name);
           break;
@@ -84,8 +90,27 @@ class GameScene extends Phaser.Scene {
     camera.startFollow(this.player);
     camera.setDeadzone(100, 100);
 
+    this.input.on("pointerdown", (pointer) => {
+      const angle = Phaser.Math.Angle.Between(
+        this.player.x,
+        this.player.y,
+        pointer.x,
+        pointer.y,
+      );
+      const angleInDegrees = Phaser.Math.RadToDeg(angle);
+
+      this.socket.send(JSON.stringify({
+        type: "fire",
+        playerX: this.player.x,
+        playerY: this.player.y,
+        pointerX: pointer.x,
+        pointerY: pointer.y,
+        angle: angleInDegrees,
+      }));
+    });
+
     this.cursor = this.input.keyboard.createCursorKeys("W,A,S,D");
-    this.keys = this.input.keyboard.addKeys("W,A,S,D");
+    this.keys = this.input.keyboard.addKeys("W,A,S,D,F");
   }
 
   update() {
@@ -153,6 +178,45 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  fire(fireData) {
+    const bullet = this.bullets.create(
+      fireData.playerX,
+      fireData.playerY,
+      "bullet",
+    );
+    this.physics.add.existing(bullet);
+    bullet.body.setCollideWorldBounds(true);
+
+    this.physics.add.collider(
+      this.bullets,
+      Object.values(this.players).map((p) => p.sprite),
+      this.bulletHitPlayer,
+      null,
+      this,
+    );
+
+    // this.tweens.add({
+    //   targets: bullet,
+    //   x: fireData.pointerX,
+    //   y: fireData.pointerY,
+    //   duration: 100,
+    //   ease: "Power1",
+    // });
+
+    this.physics.velocityFromAngle(
+      fireData.angle, // Угол в градусах
+      400, // Скорость
+      bullet.body.velocity, // Куда записать вектор скорости
+    );
+
+    // Вращаем пулю в направлении движения
+    bullet.setRotation(Phaser.Math.DegToRad(fireData.angle));
+
+    this.time.delayedCall(2000, () => {
+      if (bullet.active) bullet.destroy();
+    });
+  }
+
   movePlayer(playerName, x, y) {
     const playerData = this.players[playerName];
     if (playerData) {
@@ -172,6 +236,11 @@ class GameScene extends Phaser.Scene {
         ease: "Power1",
       });
     }
+  }
+
+  bulletHitPlayer(bullet, player) {
+    console.log("asd");
+    bullet.destroy();
   }
 
   removePlayer(playerName) {
