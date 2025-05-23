@@ -22,6 +22,7 @@ class GameScene extends Phaser.Scene {
     this.load.image("player", "assets/player.png");
     this.load.image("map", "assets/map.png");
     this.load.image("bullet", "assets/bullet.png");
+    this.load.image("pivo", "assets/pivo.png");
   }
 
   create() {
@@ -79,14 +80,17 @@ class GameScene extends Phaser.Scene {
       500,
       500,
       "player",
-    );
+    ).setScale(0.1);
     this.player.setImmovable(true);
     this.player.setCollideWorldBounds(true);
     this.nickname = this.add.text(
-      this.player.x - 13,
-      this.player.y - 35,
+      this.player.x,
+      this.player.y - 50,
       name,
-    );
+      {
+        fontSize: "25px",
+      },
+    ).setOrigin(0.5);
 
     const camera = this.cameras.main;
     camera.startFollow(this.player);
@@ -165,7 +169,9 @@ class GameScene extends Phaser.Scene {
   addPlayer(playerName, x, y) {
     if (!this.players[playerName]) {
       // const player = this.add.sprite(x, y, "player");
-      const playerNameText = this.add.text(x, y - 25, playerName, {}).setOrigin(
+      const playerNameText = this.add.text(x, y - 50, playerName, {
+        fontSize: "25px",
+      }).setOrigin(
         0.5,
       );
 
@@ -173,7 +179,7 @@ class GameScene extends Phaser.Scene {
         x,
         y,
         "player",
-      );
+      ).setScale(0.1);
 
       this.physics.add.existing(player);
       player.body.setCollideWorldBounds(true);
@@ -193,7 +199,7 @@ class GameScene extends Phaser.Scene {
       fireData.playerX,
       fireData.playerY,
       "bullet",
-    );
+    ).setScale(0.05);
     this.physics.add.existing(bullet);
     bullet.body.setCollideWorldBounds(true);
 
@@ -249,7 +255,7 @@ class GameScene extends Phaser.Scene {
       this.tweens.add({
         targets: playerData.nameText,
         x: x,
-        y: y - 25,
+        y: y - 50,
         duration: 0,
         ease: "Power1",
       });
@@ -292,6 +298,7 @@ class GameScene extends Phaser.Scene {
       player.x,
       player.y,
       `Сздох лол: ${this.timerText}`,
+      { fontSize: "100px" },
     ).setOrigin(
       0.5,
     );
@@ -317,6 +324,7 @@ class GameScene extends Phaser.Scene {
         this.player.x - 13,
         this.player.y - 35,
         name,
+        { fontSize: "50px" },
       );
 
       this.isAlive = true;
@@ -346,7 +354,7 @@ const config = {
     default: "arcade",
     arcade: {
       gravity: { y: 0 },
-      debug: true,
+      debug: false,
     },
   },
   scene: [GameScene],
