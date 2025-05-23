@@ -15,10 +15,11 @@ class GameScene extends Phaser.Scene {
     this.cursor;
     this.playerSpeed = 160;
     this.players = {};
+    this.isAlive = true;
   }
 
   preload() {
-    this.load.image("player");
+    this.load.image("player", "assets/player.png");
     this.load.image("map", "assets/map.png");
     this.load.image("bullet", "assets/bullet.png");
   }
@@ -37,6 +38,7 @@ class GameScene extends Phaser.Scene {
     };
 
     this.bullets = this.physics.add.group();
+    this.plauersGroup = this.add.group();
 
     this.add.sprite(500, 500, "map");
 
@@ -116,10 +118,12 @@ class GameScene extends Phaser.Scene {
   update() {
     const { cursor, player, keys } = this;
 
+    if (!this.isAlive) return 1;
+
     this.nickname.setPosition(player.x - 13, player.y - 35);
 
-    const playersList = Object.values(this.players).map((p) => p.sprite);
-    this.physics.world.collide(player, playersList);
+    this.playersList = Object.values(this.players).map((p) => p.sprite);
+    this.physics.world.collide(player, this.playersList);
 
     if (cursor.left.isDown || keys.A.isDown) {
       player.setVelocityX(-160);
@@ -160,9 +164,15 @@ class GameScene extends Phaser.Scene {
 
   addPlayer(playerName, x, y) {
     if (!this.players[playerName]) {
-      const player = this.add.sprite(x, y, "player");
+      // const player = this.add.sprite(x, y, "player");
       const playerNameText = this.add.text(x, y - 25, playerName, {}).setOrigin(
         0.5,
+      );
+
+      const player = this.plauersGroup.create(
+        x,
+        y,
+        "player",
       );
 
       this.physics.add.existing(player);
@@ -189,8 +199,16 @@ class GameScene extends Phaser.Scene {
 
     this.physics.add.collider(
       this.bullets,
-      Object.values(this.players).map((p) => p.sprite),
+      this.plauersGroup,
       this.bulletHitPlayer,
+      null,
+      this,
+    );
+
+    this.physics.add.collider(
+      this.player,
+      this.bullets,
+      this.bulletHitThisPlayer,
       null,
       this,
     );
@@ -238,9 +256,75 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  bulletHitPlayer(bullet, player) {
+  bulletHitPlayer(player, bullet) {
     console.log("asd");
     bullet.destroy();
+    player.destroy();
+  }
+
+  bulletHitThisPlayer(player, bullet) {
+    console.log("asd");
+    bullet.destroy();
+    this.playerDeath(player);
+  }
+
+  playerDeath(player) {
+    this.timerText = 3;
+    this.isAlive = false;
+    player.destroy();
+    this.time.delayedCall(
+      4000,
+      () => {
+        this.timer = this.timer - 1;
+      },
+      [],
+      this,
+    );
+
+    this.timer = this.time.addEvent({
+      delay: 1000,
+      callback: this.updateTimer,
+      callbackScope: this,
+      loop: true,
+    });
+
+    this.deathText = this.add.text(
+      player.x,
+      player.y,
+      `Сздох лол: ${this.timerText}`,
+    ).setOrigin(
+      0.5,
+    );
+  }
+
+  updateTimer() {
+    if (this.timer) {
+      this.timerText = this.timerText - 1;
+      this.deathText.setText(`Сздох лол: ${this.timerText}`);
+    } else {
+      this.deathText.destroy();
+
+      window.location.reload();
+
+      this.player = this.physics.add.image(
+        500,
+        500,
+        "player",
+      );
+      this.player.setImmovable(true);
+      this.player.setCollideWorldBounds(true);
+      this.nickname = this.add.text(
+        this.player.x - 13,
+        this.player.y - 35,
+        name,
+      );
+
+      this.isAlive = true;
+    }
+  }
+
+  shutdown() {
+    if (this.timer) this.timer.remove();
   }
 
   removePlayer(playerName) {
