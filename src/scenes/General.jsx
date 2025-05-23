@@ -23,6 +23,11 @@ class GameScene extends Phaser.Scene {
     this.load.image("map", "assets/map.png");
     this.load.image("bullet", "assets/bullet.png");
     this.load.image("pivo", "assets/pivo.png");
+    this.load.spritesheet("explosion", "assets/explosion.png", {
+      frameWidth: 32,
+      frameHeight: 32,
+      endFrame: 4,
+    });
   }
 
   create() {
@@ -37,6 +42,16 @@ class GameScene extends Phaser.Scene {
         y: self.player.y,
       }));
     };
+
+    this.anims.create({
+      key: "explode",
+      frames: this.anims.generateFrameNumbers("explosion", {
+        start: 0,
+        end: 3,
+      }),
+      frameRate: 12,
+      repeat: 0,
+    });
 
     this.bullets = this.physics.add.group();
     this.plauersGroup = this.add.group();
@@ -266,6 +281,23 @@ class GameScene extends Phaser.Scene {
     console.log("asd");
     bullet.destroy();
     player.destroy();
+
+    this.createExplosion(player.x, player.y);
+  }
+
+  createExplosion(x, y) {
+    this.explosion = this.add.sprite(x, y, "explosion")
+      .setVisible(false);
+
+    this.explosion
+      .setPosition(x, y)
+      .setVisible(true)
+      .play("explode")
+      .setScale(4);
+
+    this.explosion.on("animationcomplete", () => {
+      this.explosion.setVisible(false); // скрываем или destroy()
+    });
   }
 
   bulletHitThisPlayer(player, bullet) {
