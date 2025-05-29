@@ -6,6 +6,8 @@ const sizes = {
   height: 1000,
 };
 
+const WS_URL = import.meta.env.VITE_API_URL;
+
 const name = localStorage.getItem("name");
 
 class GameScene extends Phaser.Scene {
@@ -32,7 +34,7 @@ class GameScene extends Phaser.Scene {
 
   create() {
     const self = this;
-    this.socket = new WebSocket("ws://localhost:8000/ws");
+    this.socket = new WebSocket(WS_URL);
 
     this.socket.onopen = function(e) {
       console.log("Websocket connected");
