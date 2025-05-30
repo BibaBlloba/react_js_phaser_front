@@ -45,6 +45,8 @@ class GameScene extends Phaser.Scene {
       }));
     };
 
+    this.pointer = this.input.activePointer;
+
     this.anims.create({
       key: "explode",
       frames: this.anims.generateFrameNumbers("explosion", {
@@ -90,6 +92,9 @@ class GameScene extends Phaser.Scene {
         case "player_disconnected":
           self.removePlayer(message.name);
           break;
+        case "pivo_expl":
+          self.createExplodingObjects(message.x, message.y, message.name);
+          break;
       }
     };
 
@@ -132,7 +137,7 @@ class GameScene extends Phaser.Scene {
       }));
     });
 
-    this.cursor = this.input.keyboard.createCursorKeys("W,A,S,D");
+    this.cursor = this.input.keyboard.createCursorKeys("W,A,S,D,F");
     this.keys = this.input.keyboard.addKeys("W,A,S,D,F");
   }
 
@@ -162,6 +167,16 @@ class GameScene extends Phaser.Scene {
       }));
     } else {
       player.setVelocityX(0);
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.F)) {
+      // this.createExplodingObjects(this.pointer.x, this.pointer.y);
+      this.socket.send(JSON.stringify({
+        type: "pivo_expl",
+        name: name,
+        x: this.pointer.x,
+        y: this.pointer.y,
+      }));
     }
 
     if (cursor.up.isDown || keys.W.isDown) {
@@ -234,6 +249,7 @@ class GameScene extends Phaser.Scene {
       this.bulletHitThisPlayer,
       null,
       this,
+      fireData.name,
     );
 
     // this.tweens.add({
@@ -302,10 +318,13 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  bulletHitThisPlayer(player, bullet) {
-    console.log("asd");
+  bulletHitThisPlayer(player, bullet, fired_name) {
+    console.log("fired_name: ", fired_name);
+    console.log("player_name: ", name);
     bullet.destroy();
-    this.playerDeath(player);
+    if (fired_name !== name) {
+      this.playerDeath(player);
+    }
   }
 
   playerDeath(player) {
@@ -364,6 +383,50 @@ class GameScene extends Phaser.Scene {
       this.isAlive = true;
     }
   }
+
+  createExplodingObjects = (x, y, fired_name, count = 10) => {
+    for (let i = 0; i < count; i++) {
+      // Создаем объект в заданной точке
+      const obj = this.physics.add.image(x, y, "bullet").setScale(0.05);
+      this.physics.add.existing(obj);
+      obj.body.setCollideWorldBounds(true);
+
+      this.physics.add.collider(
+        obj,
+        this.plauersGroup,
+        this.bulletHitPlayer,
+        null,
+        this,
+      );
+
+      this.physics.add.collider(
+        this.player,
+        obj,
+        (player, bullet) =>
+          this.bulletHitThisPlayer(player, bullet, fired_name),
+        null,
+        this,
+      );
+
+      // Устанавливаем случайное направление
+      const angle = (i / count) * Math.PI * 2; // Равномерное распределение
+      const speed = 150; // Фиксированная скорость (или можно оставить случайную)
+
+      // Задаем скорость по осям X и Y на основе угла
+      obj.setVelocity(
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed,
+      );
+
+      // Опционально: добавляем случайное вращение
+      obj.setAngularVelocity(50 + Math.random() * 100);
+
+      // Опционально: устанавливаем время жизни объекта
+      this.time.delayedCall(2000, () => {
+        obj.destroy();
+      });
+    }
+  };
 
   shutdown() {
     if (this.timer) this.timer.remove();
